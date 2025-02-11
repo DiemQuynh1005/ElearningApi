@@ -21,7 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.edu.project_edu.dto.AccountDTO;
 import com.edu.project_edu.dto.LoginDTO;
-import com.edu.project_edu.dto.VerifTokenDTO;
+// import com.edu.project_edu.dto.VerifTokenDTO;
 import com.edu.project_edu.entities.Account;
 import com.edu.project_edu.services.AccountService;
 import com.edu.project_edu.services.VerificationService;
@@ -47,6 +47,10 @@ public class AccountController {
    */
   @PostMapping("verif_email") // http://localhost:8080/api/accounts/verif_email?email=abc@gmail.com
   public ResponseEntity<?> sendVerificationMail(@RequestParam @NotEmpty @Email String email) {
+    boolean checkEmailExisted = _accountService.checkEmailExisted(email);
+    if (checkEmailExisted) {
+      return new ResponseEntity<>("Email already exists.", HttpStatus.CONFLICT); // 409 Conflict
+    }
     boolean status = _verificationService.forRegisterAccount(email);
     if (status) {
       return new ResponseEntity<>(HttpStatus.OK); // Return status 200
@@ -54,20 +58,22 @@ public class AccountController {
     return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR); // Return status 500
   }
 
-  /*
-   * ----------------- VERIFICATE TOKEN -----------------
-   */
-  @PostMapping("verif_token")
-  public ResponseEntity<?> verificateRegisterToken(@Valid @RequestBody VerifTokenDTO verifTokenDTO, BindingResult br) {
-    if (br.hasErrors()) {
-      return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Return status 400
-    }
-    boolean status = _verificationService.verifyToken(verifTokenDTO.getToken(), verifTokenDTO.getEmail());
-    if (status) {
-      return new ResponseEntity<>(HttpStatus.OK); // Return status 200
-    }
-    return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Return status 400
-  }
+  // /*
+  // * ----------------- VERIFICATE TOKEN -----------------
+  // */
+  // @PostMapping("verif_token")
+  // public ResponseEntity<?> verificateRegisterToken(@Valid @RequestBody
+  // VerifTokenDTO verifTokenDTO, BindingResult br) {
+  // if (br.hasErrors()) {
+  // return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Return status 400
+  // }
+  // boolean status = _verificationService.verifyToken(verifTokenDTO.getToken(),
+  // verifTokenDTO.getEmail());
+  // if (status) {
+  // return new ResponseEntity<>(HttpStatus.OK); // Return status 200
+  // }
+  // return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Return status 400
+  // }
 
   /*
    * ----------------- REGISTER NEW ACCOUNT -----------------
@@ -78,23 +84,26 @@ public class AccountController {
     if (br.hasErrors()) {
       return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Return status 400
     }
-
     try {
-      Account saveAccount = new Account();
-      BeanUtils.copyProperties(accountDto, saveAccount);
-      if (!file.isEmpty()) {
-        accountDto.setAvatar(file);
-        Path path = Paths.get(uploadDir + "/accounts");
-        if (!Files.exists(path)) {
-          Files.createDirectories(path);
+      boolean status = _verificationService.verifyToken(accountDto.getToken(), accountDto.getEmail());
+      if (status) {
+        Account saveAccount = new Account();
+        BeanUtils.copyProperties(accountDto, saveAccount);
+        if (!file.isEmpty()) {
+          accountDto.setAvatar(file);
+          Path path = Paths.get(uploadDir + "/accounts");
+          if (!Files.exists(path)) {
+            Files.createDirectories(path);
+          }
+          String fileName = new Timestamp(System.currentTimeMillis()).getTime() + "_" + file.getOriginalFilename();
+          Path filePath = path.resolve(fileName);
+          Files.copy(file.getInputStream(), filePath);
+          saveAccount.setAvatar(fileName);
         }
-        String fileName = new Timestamp(System.currentTimeMillis()).getTime() + "_" + file.getOriginalFilename();
-        Path filePath = path.resolve(fileName);
-        Files.copy(file.getInputStream(), filePath);
-        saveAccount.setAvatar(fileName);
+        Account rs = _accountService.saveAccount(saveAccount);
+        return new ResponseEntity<>(rs, HttpStatus.CREATED); // Return with status 201
       }
-      Account rs = _accountService.saveAccount(saveAccount);
-      return new ResponseEntity<>(rs, HttpStatus.CREATED); // Return created Blog with status 201
+      return new ResponseEntity<>(HttpStatus.FORBIDDEN); // Return with status 403
     } catch (Exception e) {
       return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR); // Return status 500
     }

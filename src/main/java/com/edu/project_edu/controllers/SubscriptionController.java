@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.edu.project_edu.dto.SubscriptionRequest;
@@ -27,6 +28,7 @@ import com.edu.project_edu.services.SubscriptionService;
 import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -73,32 +75,28 @@ public class SubscriptionController {
         // 1. Retrieve selected courses from the request
         List<Course> selectedCourses = _courseService.getCoursesByIds(request.getList_course_id());
         if (selectedCourses.size() == request.getList_course_id().size()) {
-          // 2. Calculate total fee without promotion
-          double totalFee = selectedCourses.stream()
-              .mapToDouble(Course::getPrice)
-              .sum();
-
-          // 3. Apply promotion if applicable
+          // 2. Apply promotion if applicable
           Promotion promotion = null;
           if (request.getPromotion_code() != null && !request.getPromotion_code().isBlank()) {
             promotion = _promotionService.getPromotionByCode(request.getPromotion_code());
-            if (promotion != null && promotion.isStatus() && _promotionService.isUsablePromotion(promotion)
-                && totalFee >= promotion.getMin_amount()) {
-              // Check whether the user already used this promotion yet
-              if (!_promotionUsageService.isPromotionUsedByUser(account, promotion)) {
-                totalFee -= (totalFee * promotion.getDiscount_rate()) / 100;
-                _promotionService.minusOneQuantity(promotion);
-              } else {
-                return new ResponseEntity<>(HttpStatus.NOT_ACCEPTABLE); // Return status 406
-              }
+            // if (promotion != null && promotion.isStatus() &&
+            // _promotionService.isUsablePromotion(promotion)
+            // && totalFee >= promotion.getMin_amount()) {
+            // Check whether the user already used this promotion yet
+            if (promotion != null && promotion.isStatus()
+                && !_promotionUsageService.isPromotionUsedByUser(account, promotion)) {
+              _promotionService.minusOneQuantity(promotion);
             } else {
-              return new ResponseEntity<>(HttpStatus.FORBIDDEN); // Return status 403
+              return new ResponseEntity<>(HttpStatus.NOT_ACCEPTABLE); // Return status 406
             }
+            // } else {
+            // return new ResponseEntity<>(HttpStatus.FORBIDDEN); // Return status 403
+            // }
           }
 
           // 4. Create a payment
           Payment payment = new Payment();
-          payment.setAmount(totalFee);
+          payment.setAmount(request.getTotalAmount());
           payment.setPromotion(promotion);
           Payment savePayment = _paymentService.savePayment(payment);
           // Payment savePayment = _paymentService.savePayment(new Payment(totalFee,
@@ -133,6 +131,16 @@ public class SubscriptionController {
     } catch (Exception e) {
       return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR); // Return status 500
     }
+  }
+
+  /*
+   * ----------------- GET ALL SUBSCRIPTION BY ACCOUNT NAME-----------------
+   */
+  @ResponseStatus(HttpStatus.OK)
+  @GetMapping(path = "/by-account-name/{name}")
+  public List<Subscription> getAllByAccountName(@PathVariable String name) {
+    List<Subscription> list = _subscriptionService.getAllByAccountName(name);
+    return list;
   }
 
 }

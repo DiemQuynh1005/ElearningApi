@@ -31,6 +31,10 @@ public class AccountService {
     return _accountRepository.findById(id).orElse(null);
   }
 
+  public boolean checkEmailExisted(String email) {
+    return _accountRepository.findByEmail(email) != null;
+  }
+
   public Account saveAccount(Account account) {
 
     try {

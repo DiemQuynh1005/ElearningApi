@@ -1,20 +1,19 @@
 package com.edu.project_edu.dto;
 
-import java.util.List;
-
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class SubscriptionRequest {
+public class CheckPromotionRequest {
   @Positive
   private int account_id;
 
+  @NotEmpty
   private String promotion_code;
 
-  private List<Integer> list_course_id;
-
-  private double totalAmount;
+  @Positive
+  private double amount;
 }

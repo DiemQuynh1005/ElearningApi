@@ -18,8 +18,8 @@ public class AccountDTO {
   @NotEmpty(message = "Password is required!")
   private String password;
 
-  // @NotEmpty(message = "Token is required!")
-  // private String token;
+  @NotEmpty(message = "Token is required!")
+  private String token;
 
   @NotEmpty(message = "Email is required!")
   @Email(message = "Invalid Email Format")

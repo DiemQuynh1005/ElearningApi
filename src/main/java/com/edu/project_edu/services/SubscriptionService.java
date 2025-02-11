@@ -20,4 +20,8 @@ public class SubscriptionService {
   public void saveAllSubscriptions(List<Subscription> subscriptions) {
     _subscriptionRepository.saveAll(subscriptions);
   }
+
+  public List<Subscription> getAllByAccountName(String userName) {
+    return _subscriptionRepository.findByAccountName(userName);
+  }
 }
